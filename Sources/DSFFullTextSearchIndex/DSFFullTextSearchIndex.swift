@@ -73,7 +73,7 @@ import SQLite3
 			print("Error opening database")
 			return .sqliteUnableToOpen
 		}
-		return .success
+		return createTables()
 	}
 
 	/// Close the search index
@@ -362,7 +362,7 @@ private extension DSFFullTextSearchIndex {
 	func createTables() -> Status {
 		let createTableString =
 			"""
-			CREATE VIRTUAL TABLE \(DSFFullTextSearchIndex.TableDef)
+			CREATE VIRTUAL TABLE IF NOT EXISTS \(DSFFullTextSearchIndex.TableDef)
 			USING FTS5(url UNINDEXED, content);
 			"""
 
