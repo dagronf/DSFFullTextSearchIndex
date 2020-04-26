@@ -1,7 +1,7 @@
 import XCTest
 
-import DSFSearchIndexTests
+import DSFFullTextSearchIndexTests
 
 var tests = [XCTestCaseEntry]()
-tests += DSFSearchIndexTests.allTests()
+tests += DSFFullTextSearchIndexTests.allTests()
 XCTMain(tests)

@@ -1,12 +1,34 @@
-@testable import DSFSearchIndex
+//
+//  DSFFullTextSearchIndexTests.swift
+//  DSFFullTextSearchIndex
+//
+//  Copyright © 2020 Darren Ford. All rights reserved.
+//
+//  MIT license
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+//  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+//  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+//  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all copies or substantial
+//  portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+//  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+//  OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+//  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+
+@testable import DSFFullTextSearchIndex
 import XCTest
 
-final class DSFSearchIndexTests: XCTestCase {
+final class DSFFullTextSearchIndexTests: XCTestCase {
 	func testBasic() {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah")
@@ -59,7 +81,7 @@ final class DSFSearchIndexTests: XCTestCase {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah1")
@@ -110,7 +132,7 @@ final class DSFSearchIndexTests: XCTestCase {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah")
@@ -137,7 +159,7 @@ final class DSFSearchIndexTests: XCTestCase {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah")
@@ -161,7 +183,7 @@ final class DSFSearchIndexTests: XCTestCase {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah")
@@ -211,7 +233,7 @@ final class DSFSearchIndexTests: XCTestCase {
 		let temp = DSFTemporaryFile()
 		Swift.print(temp.tempFile.path)
 
-		let index = DSFSearchIndex()
+		let index = DSFFullTextSearchIndex()
 		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
 
 		let url1 = URL(fileURLWithPath: "/tmp/blah")
@@ -222,7 +244,52 @@ final class DSFSearchIndexTests: XCTestCase {
 		XCTAssertEqual(url1, r[0])
 	}
 
+
+	func testCreateOpen() {
+		let temp = DSFTemporaryFile()
+		Swift.print(temp.tempFile.path)
+
+		let index = DSFFullTextSearchIndex()
+		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
+
+		let url1 = URL(string: "demo://maintext/1")!
+		XCTAssertEqual(.success, index.add(url: url1, text: "Sphinx of black quartz judge my vow"))
+
+		let url2 = URL(string: "demo://maintext/2")!
+		XCTAssertEqual(.success, index.add(url: url2, text: "Quick brown fox jumps over the lazy dog"))
+
+		let url3 = URL(string: "demo://maintext/3")!
+		XCTAssertEqual(.success, index.add(url: url3, text: "The dog didn't like the bird sitting on the fence and left quietly"))
+
+		let urls1 = index.search(text: "quartz")!   // single match - url1
+		XCTAssertEqual(1, urls1.count)
+		let urls2 = index.search(text: "quick")!    // single match - url2
+		XCTAssertEqual(1, urls2.count)
+		let urls3 = index.search(text: "dog")!      // two matches - url1 and url3
+		XCTAssertEqual(2, urls3.count)
+
+		index.close()
+
+		let index2 = DSFFullTextSearchIndex()
+
+		XCTAssertEqual(.success, index2.open(filePath: temp.tempFile.path))
+		let urls11 = index2.search(text: "quartz")!   // single match - url1
+		XCTAssertEqual(1, urls11.count)
+		let urls12 = index2.search(text: "quick")!    // single match - url2
+		XCTAssertEqual(1, urls12.count)
+		let urls13 = index2.search(text: "dog")!      // two matches - url1 and url3
+		XCTAssertEqual(2, urls13.count)
+
+		index.close()
+	}
+
 	static var allTests = [
 		("testBasic", testBasic),
+		("testDelete", testDelete),
+		("testChinese", testChinese),
+		("testStopWords", testStopWords),
+		("testPhrasesAndNear", testPhrasesAndNear),
+		("testChinese2", testChinese2),
+		("testCreateOpen", testCreateOpen),
 	]
 }

@@ -1,9 +1,30 @@
+//
+//  DSFFullTextSearchIndex.swift
+//  DSFFullTextSearchIndex
+//
+//  Copyright © 2020 Darren Ford. All rights reserved.
+//
+//  MIT license
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+//  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+//  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+//  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in all copies or substantial
+//  portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+//  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+//  OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+//  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 import Foundation
 import SQLite3
 
 /// A full text search class using sqlite FTS5 as the text indexer
-@objc public class DSFSearchIndex: NSObject {
+@objc public class DSFFullTextSearchIndex: NSObject {
 
 	private static var TableDef = "textFTS"
 	private var db: OpaquePointer?
@@ -66,7 +87,7 @@ import SQLite3
 
 // MARK: - Adding documents
 
-extension DSFSearchIndex {
+extension DSFFullTextSearchIndex {
 
 	/// Add a new document to the search index
 	/// - Parameters:
@@ -102,7 +123,7 @@ extension DSFSearchIndex {
 			textString.append(text)
 		}
 
-		let insertStatement = "INSERT INTO \(DSFSearchIndex.TableDef) (url, content) VALUES (?,?);"
+		let insertStatement = "INSERT INTO \(DSFFullTextSearchIndex.TableDef) (url, content) VALUES (?,?);"
 
 		var stmt: OpaquePointer?
 		defer {
@@ -139,7 +160,7 @@ extension DSFSearchIndex {
 
 // MARK: - Removing documents
 
-extension DSFSearchIndex {
+extension DSFFullTextSearchIndex {
 
 	/// Remove the specified document from the search index
 	@objc public func remove(url: URL) -> Status {
@@ -149,7 +170,7 @@ extension DSFSearchIndex {
 	/// Remove the specified documents from the search index
 	@objc public func remove(urls: [URL]) -> Status {
 		let urlsPlaceholder = urls.map { _ in "?" }.joined(separator: ",")
-		let deleteStatement = "DELETE FROM \(DSFSearchIndex.TableDef) where url IN (\(urlsPlaceholder));"
+		let deleteStatement = "DELETE FROM \(DSFFullTextSearchIndex.TableDef) where url IN (\(urlsPlaceholder));"
 
 		var stmt: OpaquePointer?
 		defer {
@@ -182,7 +203,7 @@ extension DSFSearchIndex {
 
 	/// Remove all documents in the search index
 	@objc public func removeAll() -> Status {
-		let deleteStatement = "DELETE FROM \(DSFSearchIndex.TableDef)"
+		let deleteStatement = "DELETE FROM \(DSFFullTextSearchIndex.TableDef)"
 		var stmt: OpaquePointer?
 		defer {
 			sqlite3_finalize(stmt)
@@ -203,11 +224,11 @@ extension DSFSearchIndex {
 
 // MARK: - Content information
 
-extension DSFSearchIndex {
+extension DSFFullTextSearchIndex {
 
 	/// Returns true if the specified document url exists in the search index, false otherwise
 	@objc public func exists(url: URL) -> Bool {
-		let query = "SELECT url FROM \(DSFSearchIndex.TableDef) where url = ?"
+		let query = "SELECT url FROM \(DSFFullTextSearchIndex.TableDef) where url = ?"
 
 		var statement: OpaquePointer?
 		defer {
@@ -230,7 +251,7 @@ extension DSFSearchIndex {
 
 	/// Returns all the document URLs stored in the index
 	@objc public func allURLs() -> [URL] {
-		let query = "SELECT url FROM \(DSFSearchIndex.TableDef)"
+		let query = "SELECT url FROM \(DSFFullTextSearchIndex.TableDef)"
 
 		var statement: OpaquePointer?
 		defer {
@@ -258,7 +279,7 @@ extension DSFSearchIndex {
 
 	/// Returns the number of documents in the search index
 	@objc public func count() -> Int32 {
-		let query = "SELECT COUNT(*) FROM \(DSFSearchIndex.TableDef)"
+		let query = "SELECT COUNT(*) FROM \(DSFFullTextSearchIndex.TableDef)"
 
 		var statement: OpaquePointer?
 		defer {
@@ -281,15 +302,15 @@ extension DSFSearchIndex {
 
 // MARK: - Search
 
-extension DSFSearchIndex {
+extension DSFFullTextSearchIndex {
 
 	/// Perform a text search using the current index
 	/// - Parameter text: The text to search for
 	/// - Returns: An array of document URLs matching the text query
 	@objc public func search(text: String) -> [URL]? {
 		let query = """
-		SELECT url FROM \(DSFSearchIndex.TableDef)
-		WHERE \(DSFSearchIndex.TableDef) MATCH ? ORDER BY bm25(\(DSFSearchIndex.TableDef))
+		SELECT url FROM \(DSFFullTextSearchIndex.TableDef)
+		WHERE \(DSFFullTextSearchIndex.TableDef) MATCH ? ORDER BY bm25(\(DSFFullTextSearchIndex.TableDef))
 		"""
 
 		var statement: OpaquePointer?
@@ -325,7 +346,7 @@ extension DSFSearchIndex {
 	}
 }
 
-private extension DSFSearchIndex {
+private extension DSFFullTextSearchIndex {
 	func createDatabase(filePath: String) -> Status {
 		if FileManager.default.fileExists(atPath: filePath) {
 			return .fileAlreadyExists
@@ -341,7 +362,7 @@ private extension DSFSearchIndex {
 	func createTables() -> Status {
 		let createTableString =
 			"""
-			CREATE VIRTUAL TABLE \(DSFSearchIndex.TableDef)
+			CREATE VIRTUAL TABLE \(DSFFullTextSearchIndex.TableDef)
 			USING FTS5(url UNINDEXED, content);
 			"""
 
