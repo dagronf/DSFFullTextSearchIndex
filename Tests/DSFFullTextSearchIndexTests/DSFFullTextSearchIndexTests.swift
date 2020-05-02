@@ -23,6 +23,14 @@
 @testable import DSFFullTextSearchIndex
 import XCTest
 
+fileprivate func bundleResourceURL(forResource name: String, withExtension ext: String) -> URL {
+	let thisSourceFile = URL(fileURLWithPath: #file)
+	var thisDirectory = thisSourceFile.deletingLastPathComponent()
+	thisDirectory = thisDirectory.appendingPathComponent("Resources")
+	thisDirectory = thisDirectory.appendingPathComponent(name + "." + ext)
+	return thisDirectory
+}
+
 final class DSFFullTextSearchIndexTests: XCTestCase {
 	func testBasic() {
 		let temp = DSFTemporaryFile()
@@ -283,6 +291,54 @@ final class DSFFullTextSearchIndexTests: XCTestCase {
 		index.close()
 	}
 
+	private func loadText(fileURL: URL) -> Data {
+		do {
+			return try Data(contentsOf: fileURL)
+		}
+		catch {
+			fatalError("couldn't load resource '\(fileURL)")
+		}
+	}
+
+	func indexContains(_ index: DSFFullTextSearchIndex, search: String, expectedCount: Int) -> [URL] {
+		let urls1 = index.search(text: search)
+		XCTAssertNotNil(urls1)
+		XCTAssertEqual(expectedCount, urls1!.count)
+		return urls1!
+	}
+
+	func testBasicLarger() {
+
+		let temp = DSFTemporaryFile()
+		Swift.print(temp.tempFile.path)
+
+		let index = DSFFullTextSearchIndex()
+		XCTAssertEqual(.success, index.create(filePath: temp.tempFile.path))
+
+		// Load in stored text document.  As the extension is specified, we can infer the mime type
+		let fileURL = bundleResourceURL(forResource: "the_school_short_story", withExtension: "txt")
+		let data = loadText(fileURL: fileURL)
+		let str = String(data: data, encoding: .utf8)!
+		XCTAssertEqual(.success, index.add(url: fileURL, text: str))
+
+		let urls1 = indexContains(index, search: "puppy", expectedCount: 1)
+		XCTAssertEqual(urls1[0], fileURL)
+		_ = indexContains(index, search: "noodles", expectedCount: 0)
+		_ = indexContains(index, search: "salam*", expectedCount: 1)		// salamander
+		_ = indexContains(index, search: "poppas + and + mommas", expectedCount: 1)
+
+		// … the salamander, the tropical fish, Edgar, the …
+		_ = indexContains(index, search: "salamander edgar", expectedCount: 1)					// salamander AND edgar in the doc
+		_ = indexContains(index, search: "\"salamander edgar\"", expectedCount: 0)				// phrase
+		_ = indexContains(index, search: "salamander + edgar", expectedCount: 0)				// phrase
+		_ = indexContains(index, search: "\"the tropical fish\"", expectedCount: 1)				// phrase
+		_ = indexContains(index, search: "the + tropical + fish + edgar", expectedCount: 1)		// phrase
+
+		_ = indexContains(index, search: "NEAR(salamander Edgar, 1)", expectedCount: 0)
+		_ = indexContains(index, search: "NEAR(salamander Edgar, 2)", expectedCount: 0)
+		_ = indexContains(index, search: "NEAR(salamander Edgar, 3)", expectedCount: 1)
+	}
+
 	static var allTests = [
 		("testBasic", testBasic),
 		("testDelete", testDelete),
@@ -291,5 +347,6 @@ final class DSFFullTextSearchIndexTests: XCTestCase {
 		("testPhrasesAndNear", testPhrasesAndNear),
 		("testChinese2", testChinese2),
 		("testCreateOpen", testCreateOpen),
+		("testBasicLarger", testBasicLarger)
 	]
 }

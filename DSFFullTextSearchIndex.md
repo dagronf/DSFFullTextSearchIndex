@@ -12,6 +12,12 @@ A full text search class using sqlite FTS5 as the text indexer
 
 ## Methods
 
+## add(document:useNativeEnumerator:stopWords:)
+
+``` swift
+@objc public func add(document: Document, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status
+```
+
 ## add(url:text:canReplace:useNativeEnumerator:stopWords:)
 
 Add a new document to the search index
@@ -31,6 +37,12 @@ Add a new document to the search index
 ### Returns
 
 true if the document was successfully added to the index, false otherwise
+
+## add(documents:canReplace:useNativeEnumerator:stopWords:)
+
+``` swift
+@objc public func add(documents: [Document], canReplace _: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status
+```
 
 ## remove(url:)
 

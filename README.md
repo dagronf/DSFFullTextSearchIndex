@@ -1,12 +1,13 @@
 # DSFFullTextSearchIndex
 
-A simple full text search (FTS) class using SQLite FTS5 using a similar API as SKSearchKit
+A simple iOS/macOS/tvOS full text search (FTS) class using SQLite FTS5 using a similar API as SKSearchKit with no external dependencides
 
 <p align="center">
     <img src="https://img.shields.io/github/v/tag/dagronf/DSFFullTextSearchIndex" />
     <img src="https://img.shields.io/badge/macOS-10.11+-red" />
     <img src="https://img.shields.io/badge/iOS-11.0+-blue" />
     <img src="https://img.shields.io/badge/tvOS-11.0+-orange" />
+    <img src="https://img.shields.io/badge/macCatalyst-1.0+-yellow" />
 </p>
 
 <p align="center">
@@ -21,7 +22,13 @@ A simple full text search (FTS) class using SQLite FTS5 using a similar API as S
 
 I wanted to add a full text search index to my macOS/iOS application and realized that SKSearchKit (and thus [DFSearchKit](https://github.com/dagronf/DFSearchKit) is macOS only. 
 
-SQLite has solid FTS capabilities and I wanted to be able to use these in a similar way as SKSearchKit.  I also wanted a simple wrapper that didn't have any dependencies.  As much as I love [GRDB](https://github.com/groue/GRDB.swift) I certainly didn't need everything that it provides.
+SQLite has solid FTS capabilities via and I wanted to be able to use these in a similar way as SKSearchKit.  I also wanted a simple wrapper that **didn't have any dependencies**.  As much as I love [GRDB](https://github.com/groue/GRDB.swift) I certainly didn't need everything that it provides.
+
+I also wanted something that can both :-
+
+* work independently in an app that doesn't have a traditional database, and
+* work in an app with an existing SQLite database.
+* be able to be shared between applications on iOS, macOS, macOS (Catalyst) and tvOS.
 
 ## Simple example
 
@@ -66,7 +73,8 @@ Generated using [swift-doc](https://github.com/SwiftDocOrg/swift-doc).
 ## To do
 
 * Add a custom tokenizer to more accurately handle stop words and CJK
-* Probably a ton of more stuff too
+* Character folding etc.
+* A ton of more stuff too.
 
 ## License
 

@@ -25,9 +25,19 @@ import SQLite3
 
 /// A full text search class using sqlite FTS5 as the text indexer
 @objc public class DSFFullTextSearchIndex: NSObject {
-
-	private static var TableDef = "textFTS"
+	private static var TableDef = "DSFFullTextIndexFTS"
 	private var db: OpaquePointer?
+
+	@objc(DSFFullTextSearchIndexDocument)
+	public class Document: NSObject {
+		let url: URL
+		let text: String
+		init(url: URL, text: String) {
+			self.url = url
+			self.text = text
+			super.init()
+		}
+	}
 
 	/// Error states
 	@objc(DSFSearchIndexStatus) public enum Status: Int {
@@ -40,6 +50,9 @@ import SQLite3
 		case sqliteUnableToPrepare = -101
 		case sqliteUnableToBind = -102
 		case sqliteUnableToStep = -103
+		case sqliteUnableToCreateTransation = -104
+		case sqliteUnableToCommitTransation = -105
+		case sqliteUnableToVacuum = -106
 	}
 
 	/// Create a search index to a file on disk
@@ -76,6 +89,18 @@ import SQLite3
 		return createTables()
 	}
 
+	/// Rebuilds the database file, repacking it into a minimal amount of disk space
+	///
+	/// See [Sqlite VACUUM command](https://www.sqlite.org/lang_vacuum.html)
+	@objc public func vacuum() -> Status {
+		guard sqlite3_exec(self.db, "VACUUM", nil, nil, nil) == SQLITE_OK else {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure starting transaction: \(errmsg)")
+			return .sqliteUnableToVacuum
+		}
+		return .success
+	}
+
 	/// Close the search index
 	@objc public func close() {
 		if let d = db {
@@ -88,6 +113,9 @@ import SQLite3
 // MARK: - Adding documents
 
 extension DSFFullTextSearchIndex {
+	@objc public func add(document: Document, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status {
+		return self.add(url: document.url, text: document.text, useNativeEnumerator: useNativeEnumerator, stopWords: stopWords)
+	}
 
 	/// Add a new document to the search index
 	/// - Parameters:
@@ -98,7 +126,6 @@ extension DSFFullTextSearchIndex {
 	///   - stopWords: If set, removes any words in the set from the document before adding to the index
 	/// - Returns: true if the document was successfully added to the index, false otherwise
 	@objc public func add(url: URL, text: String, canReplace: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status {
-
 		// If we're not allowed to replace, check whether the url exists first
 		if !canReplace, self.exists(url: url) {
 			return .documentUrlAlreadyExists
@@ -156,12 +183,37 @@ extension DSFFullTextSearchIndex {
 
 		return .success
 	}
+
+	@objc public func add(documents: [Document], canReplace _: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status {
+		guard sqlite3_exec(self.db, "BEGIN TRANSACTION", nil, nil, nil) == SQLITE_OK else {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure starting transaction: \(errmsg)")
+			return .sqliteUnableToCreateTransation
+		}
+
+		for document in documents {
+			let status = self.add(document: document, useNativeEnumerator: useNativeEnumerator, stopWords: stopWords)
+			if status != .success {
+				Swift.print("unable to add url \(document.url), rolling back")
+				_ = sqlite3_exec(self.db, "ROLLBACK TRANSACTION", nil, nil, nil)
+				return status
+			}
+		}
+
+		let status = sqlite3_exec(db, "COMMIT TRANSACTION", nil, nil, nil)
+		if status != SQLITE_OK {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure committing transaction: \(errmsg)")
+			return .sqliteUnableToCommitTransation
+		}
+
+		return .success
+	}
 }
 
 // MARK: - Removing documents
 
 extension DSFFullTextSearchIndex {
-
 	/// Remove the specified document from the search index
 	@objc public func remove(url: URL) -> Status {
 		return self.remove(urls: [url])
@@ -225,7 +277,6 @@ extension DSFFullTextSearchIndex {
 // MARK: - Content information
 
 extension DSFFullTextSearchIndex {
-
 	/// Returns true if the specified document url exists in the search index, false otherwise
 	@objc public func exists(url: URL) -> Bool {
 		let query = "SELECT url FROM \(DSFFullTextSearchIndex.TableDef) where url = ?"
@@ -303,7 +354,6 @@ extension DSFFullTextSearchIndex {
 // MARK: - Search
 
 extension DSFFullTextSearchIndex {
-
 	/// Perform a text search using the current index
 	/// - Parameter text: The text to search for
 	/// - Returns: An array of document URLs matching the text query
