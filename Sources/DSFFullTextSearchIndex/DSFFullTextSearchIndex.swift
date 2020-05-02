@@ -50,9 +50,11 @@ import SQLite3
 		case sqliteUnableToPrepare = -101
 		case sqliteUnableToBind = -102
 		case sqliteUnableToStep = -103
-		case sqliteUnableToCreateTransation = -104
-		case sqliteUnableToCommitTransation = -105
-		case sqliteUnableToVacuum = -106
+		case sqliteUnableToCreateTransaction = -104
+		case sqliteUnableToCommitTransaction = -105
+		case sqliteUnableToRollbackTransaction = -106
+
+		case sqliteUnableToVacuum = -200
 	}
 
 	/// Create a search index to a file on disk
@@ -185,30 +187,50 @@ extension DSFFullTextSearchIndex {
 	}
 
 	@objc public func add(documents: [Document], canReplace _: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status {
-		guard sqlite3_exec(self.db, "BEGIN TRANSACTION", nil, nil, nil) == SQLITE_OK else {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("failure starting transaction: \(errmsg)")
-			return .sqliteUnableToCreateTransation
+		let status = beginTransaction()
+		if status != .success {
+			return status
 		}
 
 		for document in documents {
 			let status = self.add(document: document, useNativeEnumerator: useNativeEnumerator, stopWords: stopWords)
 			if status != .success {
 				Swift.print("unable to add url \(document.url), rolling back")
-				_ = sqlite3_exec(self.db, "ROLLBACK TRANSACTION", nil, nil, nil)
+				_ = self.rollbackTransaction()
 				return status
 			}
 		}
 
-		let status = sqlite3_exec(db, "COMMIT TRANSACTION", nil, nil, nil)
-		if status != SQLITE_OK {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("failure committing transaction: \(errmsg)")
-			return .sqliteUnableToCommitTransation
-		}
+		return commitTransaction()
+	}
 
+	func beginTransaction() -> Status {
+		guard sqlite3_exec(self.db, "BEGIN TRANSACTION", nil, nil, nil) == SQLITE_OK else {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure starting transaction: \(errmsg)")
+			return .sqliteUnableToCreateTransaction
+		}
 		return .success
 	}
+
+	func commitTransaction() -> Status {
+		guard sqlite3_exec(self.db, "COMMIT TRANSACTION", nil, nil, nil) == SQLITE_OK else {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure committing transaction: \(errmsg)")
+			return .sqliteUnableToCommitTransaction
+		}
+		return .success
+	}
+
+	func rollbackTransaction() -> Status {
+		guard sqlite3_exec(self.db, "ROLLBACK TRANSACTION", nil, nil, nil) == SQLITE_OK else {
+			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+			Swift.print("failure rolling transaction: \(errmsg)")
+			return .sqliteUnableToRollbackTransaction
+		}
+		return .success
+	}
+
 }
 
 // MARK: - Removing documents
