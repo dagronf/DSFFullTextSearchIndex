@@ -1,9 +1,9 @@
 Pod::Spec.new do |s|
   s.name         = "DSFFullTextSearchIndex"
-  s.version      = "0.95"
-  s.summary      = "A simple full text search (FTS) class using SQLite FTS5 using a similar API as SKSearchKit"
+  s.version      = "1.1"
+  s.summary      = "A simple full text search indexer for macOS/iOS/tvOS"
   s.description  = <<-DESC
-    A simple full text search (FTS) class using SQLite FTS5 using a similar API as SKSearchKit
+    A simple full text search (FTS) class using SQLite FTS5 with a similar API as SKSearchKit
   DESC
   s.homepage     = "https://github.com/dagronf"
   s.license      = { :type => "MIT", :file => "LICENSE" }

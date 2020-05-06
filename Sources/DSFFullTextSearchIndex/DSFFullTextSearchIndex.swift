@@ -152,38 +152,49 @@ extension DSFFullTextSearchIndex {
 			textString.append(text)
 		}
 
-		let insertStatement = "INSERT INTO \(DSFFullTextSearchIndex.TableDef) (url, content) VALUES (?,?);"
+		let status = self.inTransaction { () -> Status in
 
-		var stmt: OpaquePointer?
-		defer {
-			sqlite3_finalize(stmt)
+			// Delete the url if it already exists
+			let status = self.remove(url: url)
+			guard status == .success else {
+				return status
+			}
+
+			let insertStatement = "INSERT INTO \(DSFFullTextSearchIndex.TableDef) (url, content) VALUES (?,?);"
+
+			var stmt: OpaquePointer?
+			defer {
+				sqlite3_finalize(stmt)
+			}
+
+			guard sqlite3_prepare(self.db, insertStatement, -1, &stmt, nil) == SQLITE_OK else {
+				let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+				Swift.print("error preparing insert: \(errmsg)")
+				return .sqliteUnableToPrepare
+			}
+
+			guard sqlite3_bind_text(stmt, 1, urlString.utf8String, -1, nil) == SQLITE_OK else {
+				let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+				Swift.print("failure binding name: \(errmsg)")
+				return .sqliteUnableToBind
+			}
+
+			guard sqlite3_bind_text(stmt, 2, textString.utf8String, -1, nil) == SQLITE_OK else {
+				let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+				Swift.print("failure binding name: \(errmsg)")
+				return .sqliteUnableToBind
+			}
+
+			guard sqlite3_step(stmt) == SQLITE_DONE else {
+				let errmsg = String(cString: sqlite3_errmsg(self.db)!)
+				Swift.print("failure inserting hero: \(errmsg)")
+				return .sqliteUnableToStep
+			}
+
+			return .success
 		}
 
-		guard sqlite3_prepare(self.db, insertStatement, -1, &stmt, nil) == SQLITE_OK else {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("error preparing insert: \(errmsg)")
-			return .sqliteUnableToPrepare
-		}
-
-		guard sqlite3_bind_text(stmt, 1, urlString.utf8String, -1, nil) == SQLITE_OK else {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("failure binding name: \(errmsg)")
-			return .sqliteUnableToBind
-		}
-
-		guard sqlite3_bind_text(stmt, 2, textString.utf8String, -1, nil) == SQLITE_OK else {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("failure binding name: \(errmsg)")
-			return .sqliteUnableToBind
-		}
-
-		guard sqlite3_step(stmt) == SQLITE_DONE else {
-			let errmsg = String(cString: sqlite3_errmsg(self.db)!)
-			Swift.print("failure inserting hero: \(errmsg)")
-			return .sqliteUnableToStep
-		}
-
-		return .success
+		return status
 	}
 
 	@objc public func add(documents: [Document], canReplace _: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status {
@@ -202,6 +213,26 @@ extension DSFFullTextSearchIndex {
 		}
 
 		return commitTransaction()
+	}
+}
+
+// MARK: - Transaction support
+
+extension DSFFullTextSearchIndex {
+	/// Run the provided block within a search index transaction.
+	@objc public func inTransaction(block: () -> Status) -> Status {
+		var status = self.beginTransaction()
+		guard status == .success else {
+			return status
+		}
+
+		status = block()
+		guard status == .success else {
+			_ = self.rollbackTransaction()
+			return status
+		}
+
+		return self.commitTransaction()
 	}
 
 	func beginTransaction() -> Status {
@@ -230,7 +261,6 @@ extension DSFFullTextSearchIndex {
 		}
 		return .success
 	}
-
 }
 
 // MARK: - Removing documents

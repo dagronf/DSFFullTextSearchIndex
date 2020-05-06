@@ -44,6 +44,14 @@ true if the document was successfully added to the index, false otherwise
 @objc public func add(documents: [Document], canReplace _: Bool = true, useNativeEnumerator: Bool = false, stopWords: Set<String>? = nil) -> Status
 ```
 
+## inTransaction(block:)
+
+Run the provided block within a search index transaction.
+
+``` swift
+@objc public func inTransaction(block: () -> Status) -> Status
+```
+
 ## remove(url:)
 
 Remove the specified document from the search index
